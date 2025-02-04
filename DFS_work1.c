@@ -3,6 +3,7 @@
 #define MAXSIZE 25
 #define ROWS 5
 #define COLS 5
+#define FILENAME "validMaps.bin"
 typedef struct{
 	int X;
 	int Y;
@@ -110,6 +111,15 @@ void generateMatrix(uint32_t num, int matrix[ROWS][COLS]) {
         }
     }
 }
+int saveAsBinary(int matrix[ROWS][COLS], const char *filename){
+	FILE *file = fopen(filename, "ab");
+	if(file == NULL) return -1;
+	
+	fwrite(matrix,sizeof(int), ROWS*COLS,file);
+	
+	fclose(file);
+	return 0;
+}
 
 int main(){
 	int counter = 0,i,j;
@@ -119,7 +129,11 @@ int main(){
     for (num = 100000; num < totalCases; num++) {
         generateMatrix(num, matrix);
         if(DFS(0,2,4,3,matrix)==1){
-        	counter++;
+//        	if(saveAsBinary(matrix, FILENAME) == -1){ // uzun surecegi icin bir kere yap 
+//				printf("kayit basarisiz");
+//			}else{
+        		counter++;
+//			}
 		}
 //		if(num % 1000000 == 0){
 //			for (i = 0; i < ROWS; i++) {
