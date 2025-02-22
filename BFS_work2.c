@@ -157,6 +157,10 @@ void statisticCreate(){
 	
 	int maksimum = 2355000; //yaklasik 2,355M
 	int counter = 0, percentage = 0;
+	
+	int trash[3];
+	fread(&trash, sizeof(int), 3, file);// dosyanin basina rows, cols ve count sayilarinin ekledim atlamasi icin
+	
 	while(fread(&matrix, sizeof(int), ROWS*COLS, file) == ROWS*COLS && counter<maksimum){ //fread() fonksiyonu (dogru calismis ve sonda degilse) okunan veri sayýsýný geri verir.
 		BFS(matrix, biasMatrix, 0, 2, 4, 3);
 		counter++;

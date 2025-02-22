@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #define MAXSIZE 25
 #define ROWS 5
 #define COLS 5
+#define MAX_VALID_MAPS 2500000
 #define FILENAME "validMaps.bin"
 typedef struct{
 	int X;
@@ -111,11 +113,17 @@ void generateMatrix(uint32_t num, int matrix[ROWS][COLS]) {
         }
     }
 }
-int saveAsBinary(int matrix[ROWS][COLS], const char *filename){
-	FILE *file = fopen(filename, "ab");
-	if(file == NULL) return -1;
+int saveAsBinary(int matrices[][ROWS][COLS], int count, const char *filename){
+	FILE *file = fopen(filename, "wb");
+    if (file == NULL) return -1;
+
+    int rows = ROWS;
+    int cols = COLS;
+    fwrite(&rows, sizeof(int), 1, file);
+    fwrite(&cols, sizeof(int), 1, file);
+	fwrite(&count, sizeof(int), 1, file);
 	
-	fwrite(matrix,sizeof(int), ROWS*COLS,file);
+    fwrite(matrices, sizeof(int), count * ROWS * COLS, file);
 	
 	fclose(file);
 	return 0;
@@ -124,31 +132,39 @@ int saveAsBinary(int matrix[ROWS][COLS], const char *filename){
 int main(){
 	int counter = 0,i,j;
 	uint32_t totalCases = 1 << (ROWS * COLS); // 2^25 = 33,554,432
+	int (*validMatrices)[ROWS][COLS] = malloc(MAX_VALID_MAPS * sizeof(int[ROWS][COLS]));
+	if (!validMatrices) {	return -1;    }
+	
     int matrix[ROWS][COLS];
 	uint32_t num ;
     for (num = 100000; num < totalCases; num++) {
         generateMatrix(num, matrix);
         if(DFS(0,2,4,3,matrix)==1){
-//        	if(saveAsBinary(matrix, FILENAME) == -1){ // uzun surecegi icin bir kere yap 
-//				printf("kayit basarisiz");
-//			}else{
-        		counter++;
-//			}
+        	if (counter < MAX_VALID_MAPS) {// burayi sabit yapma 50serli realloc yap !
+                for ( i = 0; i < ROWS; i++)
+                    for (j = 0; j < COLS; j++)
+                        validMatrices[counter][i][j] = matrix[i][j];
+
+                counter++;
+            } else {
+                printf("Bellekte saklanacak maksimum matris sayýsýna ulaþýldý!\n");
+                break;
+            }
 		}
-//		if(num % 1000000 == 0){
-//			for (i = 0; i < ROWS; i++) {
-//		        for ( j = 0; j < COLS; j++) {
-//		            printf("%d ", matrix[i][j]);
-//			    }
-//			    printf("\n");
-//			}
-//			printf("-----------\n");
-//		}
+		if(num % 1000000 == 0){
+			for (i = 0; i < ROWS; i++) {
+		        for ( j = 0; j < COLS; j++) {
+		            printf("%d ", matrix[i][j]);
+			    }
+			    printf("\n");
+			}
+			printf("-----------\n");
+		}
     }
     printf("\ngecerli harita sayisi : %d", counter);
 	
 	
-	
+	saveAsBinary(validMatrices, counter, FILENAME);
 	
 	
 	
