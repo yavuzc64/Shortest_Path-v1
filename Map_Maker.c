@@ -150,13 +150,13 @@ int main(int argc, char *argv[]) {
 		printf("Baslangic ve bitis noktalari ayni olamaz!\n");
 		return -1;
 	}
-	
+
 
 
 	int counter = 0,i,j;
-	uint32_t totalCases = 1 << (rows * cols); // 2^25 = 33,554,432
+	uint64_t totalCases = (uint64_t)1 << (rows * cols); // 2^25 = 33,554,432
 
-	int (*validMatrices) = (int*) malloc(MAX_VALID_MAPS * sizeof(int) * rows * cols);
+	int *validMatrices = (int*) malloc(MAX_VALID_MAPS * rows * cols * sizeof(int));
 	if (!validMatrices) {	return -1;    }
 	
     int *matrix = (int *) malloc(rows * cols * sizeof(int));
@@ -164,30 +164,41 @@ int main(int argc, char *argv[]) {
 	int *visited = (int *) malloc( rows * cols * sizeof(int));
 	if (!visited) { return -1; }
 
-	uint32_t num ;
+	uint32_t num , parseSize = 31360; // 7lik 20 matris boyutu
     for (num = 0; num < totalCases; num++) {
         generateMatrix(num, matrix, rows, cols);
         if(DFS(startX, startY, endX, endY, matrix, visited, rows, cols)==1){
-        	if (counter < MAX_VALID_MAPS) {// burayi sabit yapma 50serli realloc yap !
+			/*if (counter < MAX_VALID_MAPS) {// burayi sabit yapma 50serli realloc yap !
                 for ( i = 0; i < rows; i++)
                     for (j = 0; j < cols; j++)
                         validMatrices[counter * cols * rows + (i * cols + j)] = matrix[i * cols +j];
+        	*///eski hali
+			if (counter >= parseSize) {
+                parseSize += 31360;
+				int *temp = (int*) realloc(validMatrices, parseSize * rows * cols * sizeof(int));
+				if (!temp) {
+					free(validMatrices); // Bellek kaçmasını önle
+					return -1;
+				}
+				validMatrices = temp;
+            } 
+			for ( i = 0; i < rows; i++)
+                for (j = 0; j < cols; j++)
+                    validMatrices[counter * cols * rows + (i * cols + j)] = matrix[i * cols +j];
 
-                counter++;
-            } else {
-                printf("Maks matrices count!\n");
-                break;//degistir
-            }
+            counter++;
+			
 		}
-		// if(num % 1000000 == 0){
-		// 	for (i = 0; i < ROWS; i++) {
-		//         for ( j = 0; j < COLS; j++) {
-		//             printf("%d ", matrix[i][j]);
-		// 	    }
-		// 	    printf("\n");
-		// 	}
-		// 	printf("-----------\n");
-		// }
+		if(num % 1000000 == 0){
+			for (i = 0; i < rows; i++) {
+		        for ( j = 0; j < cols; j++) {
+		            printf("%d ", matrix[i*cols + j]);
+			    }
+			    printf("\n");
+			}
+			printf("%d\n",num);
+			printf("-----------\n");
+		}
     }
     printf("\ngecerli harita sayisi : %d", counter);
 	
@@ -197,6 +208,5 @@ int main(int argc, char *argv[]) {
 	free(matrix);
 	free(visited);
 
-	return i;
-	return 0;//bir sey dondurmeme ihtimali varsa diye silmedim
+	return (i == 0) ? 0 : -1;
 }
