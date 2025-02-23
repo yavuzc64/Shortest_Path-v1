@@ -128,12 +128,30 @@ void generateMatrix(uint32_t num, int *matrix, int rows, int cols) {
     }
 }
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
-        printf("Usage: %s <rows> <cols>\n", argv[0]);
+    if (argc < 7) {
+        printf("Usage: %s <rows> <cols> <StartX> <StartY> <EndX> <EndY>\n", argv[0]);
         return -1;
     }
     int rows = atoi(argv[1]);
     int cols = atoi(argv[2]);
+	if (rows <= 0 || cols <= 0) {
+		printf("rows ve cols pozitif olmalidir!\n");
+		return -1;
+	}
+	int startX = atoi(argv[3]);
+	int startY = atoi(argv[4]);
+	int endX = atoi(argv[5]);
+	int endY = atoi(argv[6]);
+	if (startX < 0 || startX >= rows || startY < 0 || startY >= cols || endX < 0 || endX >= rows || endY < 0 || endY >= cols) {
+		printf("Baslangic ve bitis noktalari matrisin icinde olmalidir!\n");
+		return -1;
+	}
+	if (startX == endX && startY == endY) {
+		printf("Baslangic ve bitis noktalari ayni olamaz!\n");
+		return -1;
+	}
+	
+
 
 	int counter = 0,i,j;
 	uint32_t totalCases = 1 << (rows * cols); // 2^25 = 33,554,432
@@ -149,7 +167,7 @@ int main(int argc, char *argv[]) {
 	uint32_t num ;
     for (num = 0; num < totalCases; num++) {
         generateMatrix(num, matrix, rows, cols);
-        if(DFS(0,2,4,3,matrix, visited, rows, cols)==1){
+        if(DFS(startX, startY, endX, endY, matrix, visited, rows, cols)==1){
         	if (counter < MAX_VALID_MAPS) {// burayi sabit yapma 50serli realloc yap !
                 for ( i = 0; i < rows; i++)
                     for (j = 0; j < cols; j++)
