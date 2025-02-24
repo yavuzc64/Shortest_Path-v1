@@ -1,9 +1,7 @@
 #include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #define MAXSIZE 100
-#define MAX_VALID_MAPS 2500000 //bunu belli bir sayiya geldikce realloc yaparak artacak sekilde duzenle
 #define FILENAME "NewValidMaps.bin"
 typedef struct{
 	int X;
@@ -45,18 +43,6 @@ Point peek(STACK *s){
 	return s->data[--k];
 }
 
-
-void printStack(STACK *s) {
-    if (isEmpty(s)) {
-        printf("Stack bos!\n");
-        return;
-    }
-    int i ;
-    printf("Stack ici (top to low):\n");
-    for (i = s->top-1; i >= 0; i--) {
-        printf("(%d, %d)\n", s->data[i].X, s->data[i].Y);
-    }
-}
 int isValid(int x, int y, int *map, int *visited, int rows, int cols){
 	return (x<rows && x >= 0 && y< cols && y>= 0 && !(visited[(x*cols)+y]) && map[(x*cols)+y] == 0);
 }
@@ -103,22 +89,42 @@ int DFS(int startX, int startY, int endX, int endY, int *map, int *visited, int 
 	return -1;
 }
 
-int saveAsBinary(int *matrices, int count, const char *filename, int rows, int cols) {
-	FILE *file = fopen(filename, "wb");
-    if (file == NULL) return -1;
+int saveAsBinary(int *validMatrices, int newCount, const char *filename, int rows, int cols) {
+    FILE *file = fopen(filename, "rb+");
+    if (!file) {
+		//dosyayı okumak icin bulamazsa yeni dosya olusturmak
+        file = fopen(filename, "wb+");
+        if (!file) {return -1;}
 
-	if (fwrite(&rows, sizeof(int), 1, file) != 1 ||
-        fwrite(&cols, sizeof(int), 1, file) != 1 ||
-        fwrite(&count, sizeof(int), 1, file) != 1 ||
-        fwrite(matrices, sizeof(int), count * rows * cols, file) != (size_t)(count * rows * cols)) {
+        int header[3] = {0, rows, cols}; // count = 0 olarak basla
+        if(fwrite(header, sizeof(int), 3, file) != 3){
+			fclose(file);
+			return -1;
+		}
+        fflush(file);
+    }
+    int oldCount = 0;
+    fseek(file, 0, SEEK_SET);
+    fread(&oldCount, sizeof(int), 1, file);
+
+    fseek(file, 0, SEEK_END);//sona ekle
+    // for (int i = 0; i < newCount; i++) {
+    //     fwrite(&validMatrices[i * rows * cols], sizeof(int), rows * cols, file);
+    // }
+	if(fwrite(validMatrices, sizeof(int), newCount * rows * cols, file) != (size_t)(newCount * rows * cols)){
         fclose(file);
         return -1;// yazma basarisiz olursa dosya kapat
     }	
-	fclose(file);
+
+    int newTotalCount = oldCount + newCount;
+    fseek(file, 0, SEEK_SET);
+    fwrite(&newTotalCount, sizeof(int), 1, file);
+    
+    fclose(file);
 	return 0;
 }
 
-void generateMatrix(uint32_t num, int *matrix, int rows, int cols) {
+void generateMatrix(unsigned long long int num, int *matrix, int rows, int cols) {
 	int i, j;
     for (i = 0; i < rows; i++) {
         for (j = 0; j < cols; j++) {
@@ -127,8 +133,10 @@ void generateMatrix(uint32_t num, int *matrix, int rows, int cols) {
         }
     }
 }
+
 int main(int argc, char *argv[]) {
-    if (argc < 7) {
+    /*	Argument Control	*/
+	if (argc < 7) {
         printf("Usage: %s <rows> <cols> <StartX> <StartY> <EndX> <EndY>\n", argv[0]);
         return -1;
     }
@@ -150,59 +158,67 @@ int main(int argc, char *argv[]) {
 		printf("Baslangic ve bitis noktalari ayni olamaz!\n");
 		return -1;
 	}
-
-
-
-	int counter = 0,i,j;
-	uint64_t totalCases = (uint64_t)1 << (rows * cols); // 2^25 = 33,554,432
-
-	int *validMatrices = (int*) malloc(MAX_VALID_MAPS * rows * cols * sizeof(int));
-	if (!validMatrices) {	return -1;    }
 	
+	
+	int i,j;
+	unsigned long long int num;
+	unsigned int parseSize = 20000, chunkSize = 1000000, counter = 0;
+	unsigned long long int totalCases = (unsigned long long int)1 << (rows * cols); // 2^25 = 33,554,432
+	
+	/*	Memory allocation	*/
+	int *validMatrices = (int*) malloc(parseSize * rows * cols * sizeof(int)); // ? makro silindi
+	if (!validMatrices) {	return -1;    }
     int *matrix = (int *) malloc(rows * cols * sizeof(int));
 	if (!matrix) { return -1; }
 	int *visited = (int *) malloc( rows * cols * sizeof(int));
 	if (!visited) { return -1; }
-
-	uint32_t num , parseSize = 31360; // 7lik 20 matris boyutu
+	
+	
+	/*	Main Process	*/
     for (num = 0; num < totalCases; num++) {
         generateMatrix(num, matrix, rows, cols);
         if(DFS(startX, startY, endX, endY, matrix, visited, rows, cols)==1){
-			/*if (counter < MAX_VALID_MAPS) {// burayi sabit yapma 50serli realloc yap !
-                for ( i = 0; i < rows; i++)
-                    for (j = 0; j < cols; j++)
-                        validMatrices[counter * cols * rows + (i * cols + j)] = matrix[i * cols +j];
-        	*///eski hali
+			/*
+			* validMatrices map in boyutlarina gore cok degisitgi icin sabit bir hafiza ayiramadim ve realloc ile aralikli olarak arttirdim
+			* daha sonra validMatricesin realloc ile fazla buyuyup hafiza ayrilamamasi ile karsilastim
+			* bu yuzden aralikli olarak dosyaya kayit yapiyorum (saveAsBinary fonksiyonu guncellendi !)
+			*/
+			if (counter > chunkSize)
+			{
+				printf("taranan: %d\n",num);
+				printf("-----------\n");
+				int i = saveAsBinary(validMatrices, counter, FILENAME, rows, cols);
+				if (i != 0) {//dosyaya yazma basarisiz olursa
+					free(validMatrices);
+					free(matrix);
+					free(visited);
+					return -1;
+				}
+				counter = 0;
+				//validMatrices i sifirlamaya gerek yok cunku counter sifirlandigi icin uzerine yazacaktir
+			}
+			
 			if (counter >= parseSize) {
-                parseSize += 31360;
+                parseSize += 20000;
 				int *temp = (int*) realloc(validMatrices, parseSize * rows * cols * sizeof(int));
 				if (!temp) {
-					free(validMatrices); // Bellek kaçmasını önle
+					free(validMatrices);
+					printf("realloc olmadi !\n");
 					return -1;
 				}
 				validMatrices = temp;
-            } 
-			for ( i = 0; i < rows; i++)
-                for (j = 0; j < cols; j++)
+            }
+			for ( i = 0; i < rows; i++){
+                for (j = 0; j < cols; j++){
                     validMatrices[counter * cols * rows + (i * cols + j)] = matrix[i * cols +j];
-
-            counter++;
-			
-		}
-		if(num % 1000000 == 0){
-			for (i = 0; i < rows; i++) {
-		        for ( j = 0; j < cols; j++) {
-		            printf("%d ", matrix[i*cols + j]);
-			    }
-			    printf("\n");
+				}
 			}
-			printf("%d\n",num);
-			printf("-----------\n");
+            counter++;
 		}
     }
-    printf("\ngecerli harita sayisi : %d", counter);
 	
-	
+	/*	Exit Process	*/
+    printf("\nSon chunkdaki harita sayisi : %d", counter);
 	i = saveAsBinary(validMatrices, counter, FILENAME, rows, cols);
 	free(validMatrices);
 	free(matrix);
