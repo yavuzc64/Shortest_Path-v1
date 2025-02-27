@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #define MAXSIZE 25
 #define MAX_STEP (MAXSIZE)
-#define FILENAME "validMaps.bin"
+#define FILENAME "NewValidMaps.bin"
 #define COLS 5
 #define ROWS 5
 
@@ -161,7 +161,7 @@ void statisticCreate(){
 	int trash[3];
 	fread(&trash, sizeof(int), 3, file);// dosyanin basina rows, cols ve count sayilarinin ekledim atlamasi icin
 	
-	while(fread(&matrix, sizeof(int), ROWS*COLS, file) == ROWS*COLS && counter<maksimum){ //fread() fonksiyonu (dogru calismis ve sonda degilse) okunan veri sayýsýný geri verir.
+	while(fread(&matrix, sizeof(int), ROWS*COLS, file) == ROWS*COLS && counter<maksimum){ //fread() fonksiyonu (dogru calismis ve sonda degilse) okunan veri sayï¿½sï¿½nï¿½ geri verir.
 		BFS(matrix, biasMatrix, 0, 2, 4, 3);
 		counter++;
 		if(counter%(maksimum/100) == 0){
@@ -172,7 +172,7 @@ void statisticCreate(){
 	}
 	fclose(file);
 	
-	FILE *textFile = fopen("directionData.txt", "w");
+	FILE *textFile = fopen("TempDirectionData.txt", "w");
 	if(textFile == NULL) return;
 	
 	fprintf(textFile, "Yukari\tAsagi\tSol\tSag\n");
