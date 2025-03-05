@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#define MAXSIZE 25
-#define MAX_STEP (MAXSIZE)
-#define FILENAME "NewValidMaps.bin"
-#define COLS 5
-#define ROWS 5
+#include <string.h>
+#define FILENAME "BfsIcinDene.bin"
+#define INDEX(x,y,z,rows,cols) (cols * x + y + (rows * cols * z))
 
 typedef struct Node{
 	int X;
@@ -21,7 +19,6 @@ void initQueue(Queue *q){
 	q->rear = NULL;
 }
 int isEmpty(Queue *q){return(q->front == NULL);}
-
 void enqueue(Queue *q, int x, int y){
 	Node* newNode = (Node*)malloc(sizeof(Node));
 	if(!newNode){return ;	}	
@@ -57,29 +54,32 @@ void freeQueue(Queue *q){
 	}
 }
 
-int isValid(int x, int y, int map[ROWS][COLS], int visited[ROWS][COLS]){
-	return ( x >= 0 && x<ROWS && y>= 0 && y< COLS && !(visited[x][y]) && map[x][y] == 0);
+int isValid(int x, int y, int *map, int *visited, int rows, int cols){
+	if (x >= rows || x < 0 || y >= cols || y < 0) return 0;
+	return (!(visited[(x*cols)+y]) && map[(x*cols)+y] == 0);
 }
 
-int BFS(int matrix[ROWS][COLS], int biasMatrix[ROWS][COLS][4], int startX, int startY, int endX, int endY){
+int BFS(int startX, int startY, int endX, int endY, int *matrix, int *biasMatrix, int *visited, int *backward, int rows, int cols){
+	int maxStep = rows * cols;
+	int i , j;
 	
 	Queue q;
 	initQueue(&q);
-	
-	int visited[ROWS][COLS] = {0};
-	int backward[ROWS][COLS][2];
+	memset(visited, 0, rows * cols * sizeof(int));
+	memset(backward, 0, 2 * rows * cols * sizeof(int));
 	enqueue(&q, startX, startY);
-	visited[startX][startY] = 1;
+	visited[cols*startX + startY] = 1;
+
 	//baslangic noktasi -1 ile isaretlenir 
-	backward[startX][startY][0] = -1;
-	backward[startX][startY][1] = -1;
+	backward[INDEX(startX,startY,0,rows,cols)]= -1; //backward[0][startX][startY] nin dengidir
+	backward[INDEX(startX,startY,1,rows,cols)]= -1;
 	
 	//			Yukari, Asagi, 	Sol, 	Sag
 	int dx[] ={	 0,		 0,		-1		,1};
 	int dy[] ={	-1,		 1,		 0		,0};
 	
-	int i,newX,newY, isFinded=0, count = 0;
-	while(!isEmpty(&q) && !isFinded && count < MAX_STEP){
+	int newX,newY, isFinded=0, count = 0;
+	while(!isEmpty(&q) && !isFinded && count < maxStep){
 		Node* node = dequeue(&q);
 		if(node == NULL) continue;	/* DEBUG */
 		int x = node->X;
@@ -95,11 +95,11 @@ int BFS(int matrix[ROWS][COLS], int biasMatrix[ROWS][COLS][4], int startX, int s
 				newX = x + dx[i];
 				newY = y + dy[i];
 			
-				if(isValid(newX, newY, matrix, visited)){
+				if(isValid(newX, newY, matrix, visited, rows, cols)){
 					enqueue(&q, newX, newY);
-					backward[newX][newY][0] = x;
-					backward[newX][newY][1] = y;
-					visited[newX][newY] = 1;
+					backward[INDEX(newX,newY,0,rows,cols)] = x;
+					backward[INDEX(newX,newY,1,rows,cols)] = y;
+					visited[cols*newX+ newY] = 1;
 				}
 			}
 		}
@@ -110,28 +110,23 @@ int BFS(int matrix[ROWS][COLS], int biasMatrix[ROWS][COLS][4], int startX, int s
 		freeQueue(&q);
 		return -1;
 	}
-	
-	
+
 	int cx = endX, cy = endY;count = 0;
-	while(backward[cx][cy][0] !=-1 && count < MAX_STEP){
-		int px = backward[cx][cy][0];
-		int py = backward[cx][cy][1];
-		
-		if(cx == px){ 	//yatayda hareket
+	while(backward[INDEX(cx,cy,0,rows,cols)] !=-1 && count < maxStep){
+		int px = backward[INDEX(cx,cy,0,rows,cols)];
+		int py = backward[INDEX(cx,cy,1,rows,cols)];
+		if(cx == px){ 			//yatayda hareket
 			if(cy < py){// Sol
-				biasMatrix[px][py][2]++;
-				//printf("sol\n");
-			}else{// Sag
-				biasMatrix[px][py][3]++;
-				//printf("sag\n");
+				biasMatrix[INDEX(px,py,2,rows,cols)]++;	// biasMatrix[px][py][2] nin muadili
+				
+			}else{		// Sag
+				biasMatrix[INDEX(px,py,3,rows,cols)]++;
 			}
-		}else{			//dikey hareket
+		}else{					//dikey hareket
 			if(cx < px){// Yukari
-				biasMatrix[px][py][0]++;
-				//printf("yukari\n");
+				biasMatrix[INDEX(px,py,0,rows,cols)]++;
 			}else{		// Asagi
-				biasMatrix[px][py][1]++;
-				//printf("asagi\n");
+				biasMatrix[INDEX(px,py,1,rows,cols)]++;
 			}
 		}
 		cx = px;
@@ -141,28 +136,119 @@ int BFS(int matrix[ROWS][COLS], int biasMatrix[ROWS][COLS][4], int startX, int s
 	return 1;
 }
 
-void loadMatrixFromBinaryFile(int *matrix[ROWS][COLS], FILE *file){
-	if(fread(matrix, sizeof(int), ROWS*COLS, file)){
-		//	okudum
+void statisticCreate(int rows, int cols, int *biasMatrix){ // bias matrisi kaydetme
+	
+	long unsigned int total;
+	int i,j,k;
+	for(i= 0; i<rows; i++){
+		for(j= 0; j<cols; j++){
+			total = biasMatrix[INDEX(i,j,0,rows,cols)] +
+			        biasMatrix[INDEX(i,j,1,rows,cols)] +
+			        biasMatrix[INDEX(i,j,2,rows,cols)] +
+			        biasMatrix[INDEX(i,j,3,rows,cols)];
+			if (total == 0) {
+			    biasMatrix[INDEX(i,j,0,rows,cols)] = 0;
+			    biasMatrix[INDEX(i,j,1,rows,cols)] = 0;
+			    biasMatrix[INDEX(i,j,2,rows,cols)] = 0;
+			    biasMatrix[INDEX(i,j,3,rows,cols)] = 0;
+			} else {
+			    for(k = 0; k < 4; k++){
+			        biasMatrix[INDEX(i,j,k,rows,cols)] *= 100;
+			        biasMatrix[INDEX(i,j,k,rows,cols)] /= total;
+			    }
+			}
+		}
 	}
+	//	.BIN		istatistigin yuzdesel degerlerini binary olarak yazdirmak icin
+	FILE *binFile = fopen("percentData.bin", "rb+");
+    if (!binFile) {
+        binFile = fopen("percentData.bin", "wb+");
+        if (!binFile) {return;}
+
+        int header[3] = {0, rows, cols};// 0 bos
+        if(fwrite(header, sizeof(int), 3, binFile) != 3){
+			fclose(binFile);
+			return;
+		}
+        fflush(binFile);
+    }
+    if(fwrite(biasMatrix, sizeof(int), 4 * rows * cols, binFile) != (size_t)(4 * rows * cols)){
+        fclose(binFile);
+        return;
+    }
+    fclose(binFile);
+		
+	/*//	.TEXT		istatistigin sayisal degerlerini text olarak yazdirmak icin
+	FILE *textFile = fopen("directionData2.txt", "w");
+	if(textFile == NULL) return;
+	
+	fprintf(textFile, "Yukari\tAsagi\tSol\tSag\n");
+	for(i= 0; i<rows; i++){
+		for(j= 0; j<cols; j++){
+			if(i == 0 && j == 2){
+				fprintf(textFile,"X");
+			}
+			if(i == 4 && j == 3){
+				fprintf(textFile,"X");
+			}
+			fprintf(textFile, "[%d, %d, %d, %d]\t", biasMatrix[INDEX(i,j,0,rows,cols)], biasMatrix[INDEX(i,j,1,rows,cols)], 
+				biasMatrix[INDEX(i,j,2,rows,cols)], biasMatrix[INDEX(i,j,3,rows,cols)]);
+		}
+		fprintf(textFile,"\n");
+	}
+	if(textFile != NULL)//bellek sizintisi riskiymis
+		fclose(textFile);
+	*/
+	
 }
-void statisticCreate(){
+
+int main(int argc, char *argv[]){
+	if (argc < 4) {
+        printf("Usage: %s <StartX> <StartY> <EndX> <EndY>\n", argv[0]);
+        return -1;
+    }
+	int startX = atoi(argv[1]);
+	int startY = atoi(argv[2]);
+	int endX = atoi(argv[3]);
+	int endY = atoi(argv[4]);
 	FILE *file = fopen(FILENAME, "rb");
 	if(file == NULL) {
 		printf("dosya acilamadi");
-		return;
+		return -1;
+	}else{
+		printf("dosya acildi\n");
 	}
-	int matrix[ROWS][COLS];// harita
-	int biasMatrix[ROWS][COLS][4] = {0};// en kisa yol a gore doldurulacak matris 	
 	
-	int maksimum = 2355000; //yaklasik 2,355M
+	int measures[3];
+	fread(measures, sizeof(int), 3, file);// dosyanin basina rows, cols ve count sayilarinin ekledim atlamasi icin
+	int rows = measures[1];
+	int cols = measures[2];
+	
+	/*	Memory allocation	*/
+	int *biasMatrix = (int*) malloc(4 * rows * cols * sizeof(int));// en kisa yolda doldurulacak yon matrisi 	
+	if (!biasMatrix) {	return -1;    }
+    int *matrix = (int *) malloc(rows * cols * sizeof(int));
+	if (!matrix) { free(biasMatrix);return -1; }
+	int *visited = (int *) malloc( rows * cols * sizeof(int));
+	if (!visited) { free(biasMatrix);free(matrix);return -1; };
+	int *backward = (int*) malloc(2 * rows * cols * sizeof(int));// en kisa yol bulmak icin matris
+	if (!backward) {	
+		free(biasMatrix);
+		free(matrix);
+		free(visited);
+		return -1;
+	}
+	memset(biasMatrix, 0, 4 * rows * cols * sizeof(int));
+	int maksimum = measures[0];
 	int counter = 0, percentage = 0;
-	
-	int trash[3];
-	fread(&trash, sizeof(int), 3, file);// dosyanin basina rows, cols ve count sayilarinin ekledim atlamasi icin
-	
-	while(fread(&matrix, sizeof(int), ROWS*COLS, file) == ROWS*COLS && counter<maksimum){ //fread() fonksiyonu (dogru calismis ve sonda degilse) okunan veri say�s�n� geri verir.
-		BFS(matrix, biasMatrix, 0, 2, 4, 3);
+	//fread() fonksiyonu (dogru calismis ve sonda degilse) okunan veri sayisini geri verir.
+	while(fread(matrix, sizeof(int), rows*cols, file) == rows*cols && counter<maksimum){ 
+		if (counter > 1000)// ilk basta bosa yakin olusturuyor. onlari atlamak icin
+		{
+			BFS(startX,startY,endX,endY,matrix,biasMatrix,visited,backward,rows,cols);
+		}
+		
+		
 		counter++;
 		if(counter%(maksimum/100) == 0){
 			percentage++;
@@ -171,56 +257,13 @@ void statisticCreate(){
 		}
 	}
 	fclose(file);
-	
-	FILE *textFile = fopen("TempDirectionData.txt", "w");
-	if(textFile == NULL) return;
-	
-	fprintf(textFile, "Yukari\tAsagi\tSol\tSag\n");
-	int i, j;
-	for(i= 0; i<ROWS; i++){
-		for(j= 0; j<COLS; j++){
-			fprintf(textFile, "[%d,%d,%d,%d]\t\t\t\t", biasMatrix[i][j][0], biasMatrix[i][j][1], biasMatrix[i][j][2], biasMatrix[i][j][3]);
-		}
-		fprintf(textFile,"\n");
-	}	
-	fclose(textFile);
-}
+	printf("DOSYAYA KAYIT YAPILIYOR\n");
+	statisticCreate(rows, cols, biasMatrix);
+	free(matrix);
+	free(visited);
+	free(biasMatrix);
+	free(backward);
 
 
-int main(){
-	/* TEST
-	Queue q;
-    initQueue(&q);
-    enqueue(&q, 2, 3);
-    enqueue(&q, 4, 5);
-    Node* node = dequeue(&q);
-    if (node) {
-        printf("Output: (%d, %d)\n", node->X, node->Y);
-        free(node);
-    }
-    freeQueue(&q);*/
-    
-//	int matrix[ROWS][COLS] = {
-//        {0, 0, 0, 1, 0},
-//        {1, 1, 0, 1, 0},
-//        {0, 0, 0, 0, 0},
-//        {0, 1, 1, 1, 0},
-//        {0, 0, 0, 0, 0}
-//    };
-//
-//    int biasMatrix[ROWS][COLS][4] = {0};
-//
-//    BFS(matrix, biasMatrix, 0, 0, 4, 4);
-	/*int i,j ;
-	printf("Bias Matrix:\n");
-    for (i = 0; i < ROWS; i++) {
-        for ( j = 0; j < COLS; j++) {
-            printf("[%d%d%d%d] ", biasMatrix[i][j][0], biasMatrix[i][j][1], biasMatrix[i][j][2], biasMatrix[i][j][3]);
-        }
-        printf("\n");
-    }*/
-	statisticCreate();
-	
-	
 	return 0;
 }

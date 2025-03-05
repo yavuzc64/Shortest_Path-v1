@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define MAXSIZE 100
-#define FILENAME "NewValidMaps.bin"
+#define FILENAME "BfsIcinDene.bin"
 typedef struct{
 	int X;
 	int Y;
@@ -133,7 +133,12 @@ void generateMatrix(unsigned long long int num, int *matrix, int rows, int cols)
         }
     }
 }
-
+/*	Buyuklukler
+	4x4 -> 					65.536
+	5x5 -> 				33.554.432
+	6x6 -> 			68.719.476.736
+	7x7 -> 		562.949.953.421.312
+*/
 int main(int argc, char *argv[]) {
     /*	Argument Control	*/
 	if (argc < 7) {
