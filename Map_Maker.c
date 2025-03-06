@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #define MAXSIZE 100
-#define FILENAME "BfsIcinDene.bin"
+#define FILENAME "Maps.bin"
+
 typedef struct{
 	int X;
 	int Y;
@@ -117,6 +118,7 @@ int saveAsBinary(int *validMatrices, int newCount, const char *filename, int row
     }	
 
     int newTotalCount = oldCount + newCount;
+    printf("count %d\n",newTotalCount);
     fseek(file, 0, SEEK_SET);
     fwrite(&newTotalCount, sizeof(int), 1, file);
     
@@ -164,14 +166,11 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 	
-	
-	int i,j;
-	unsigned long long int num;
 	unsigned int parseSize = 20000, chunkSize = 1000000, counter = 0;
-	unsigned long long int totalCases = (unsigned long long int)1 << (rows * cols); // 2^25 = 33,554,432
+	unsigned long long int totalCases = (unsigned long long int)1 << (rows * cols);
 	
 	/*	Memory allocation	*/
-	int *validMatrices = (int*) malloc(parseSize * rows * cols * sizeof(int)); // ? makro silindi
+	int *validMatrices = (int*) malloc(parseSize * rows * cols * sizeof(int));
 	if (!validMatrices) {	return -1;    }
     int *matrix = (int *) malloc(rows * cols * sizeof(int));
 	if (!matrix) { return -1; }
@@ -180,7 +179,12 @@ int main(int argc, char *argv[]) {
 	
 	
 	/*	Main Process	*/
-    for (num = 0; num < totalCases; num++) {
+	int i,j;
+	unsigned long long int num = 100;
+	long unsigned int sectionStep = 10000; // Ýlk baþta büyük adýmlarla baþla
+	const unsigned long int threshold = (float)totalCases * 0.01f;
+	printf("%d\n",threshold);
+    while(num < totalCases){
         generateMatrix(num, matrix, rows, cols);
         if(DFS(startX, startY, endX, endY, matrix, visited, rows, cols)==1){
 			/*
@@ -190,8 +194,6 @@ int main(int argc, char *argv[]) {
 			*/
 			if (counter > chunkSize)
 			{
-				printf("taranan: %d\n",num);
-				printf("-----------\n");
 				int i = saveAsBinary(validMatrices, counter, FILENAME, rows, cols);
 				if (i != 0) {//dosyaya yazma basarisiz olursa
 					free(validMatrices);
@@ -219,6 +221,13 @@ int main(int argc, char *argv[]) {
 				}
 			}
             counter++;
+			if (num > threshold) {
+	            sectionStep = (sectionStep > 1) ? sectionStep / 1.2 : 1; // Küçülterek git, ama minimum 1 olsun
+	        }
+	        num += sectionStep;
+		}
+		else{
+			num++;
 		}
     }
 	

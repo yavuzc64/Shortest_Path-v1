@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define FILENAME "BfsIcinDene.bin"
+#define INPUTFILENAME "Maps.bin"
+#DEFÝNE OUTPUTFILENAME "PercentData.bin"
 #define INDEX(x,y,z,rows,cols) (cols * x + y + (rows * cols * z))
 
 typedef struct Node{
@@ -160,9 +161,9 @@ void statisticCreate(int rows, int cols, int *biasMatrix){ // bias matrisi kayde
 		}
 	}
 	//	.BIN		istatistigin yuzdesel degerlerini binary olarak yazdirmak icin
-	FILE *binFile = fopen("percentData.bin", "rb+");
+	FILE *binFile = fopen(OUTPUTFILENAME, "rb+");
     if (!binFile) {
-        binFile = fopen("percentData.bin", "wb+");
+        binFile = fopen(OUTPUTFILENAME, "wb+");
         if (!binFile) {return;}
 
         int header[3] = {0, rows, cols};// 0 bos
@@ -211,7 +212,7 @@ int main(int argc, char *argv[]){
 	int startY = atoi(argv[2]);
 	int endX = atoi(argv[3]);
 	int endY = atoi(argv[4]);
-	FILE *file = fopen(FILENAME, "rb");
+	FILE *file = fopen(INPUTFILENAME, "rb");
 	if(file == NULL) {
 		printf("dosya acilamadi");
 		return -1;
