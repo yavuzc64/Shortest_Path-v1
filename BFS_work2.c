@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define INPUTFILENAME "Maps.bin"
-#DEFÝNE OUTPUTFILENAME "PercentData.bin"
+#define OUTPUTFILENAME "PercentData.bin"
 #define INDEX(x,y,z,rows,cols) (cols * x + y + (rows * cols * z))
 
 typedef struct Node{
