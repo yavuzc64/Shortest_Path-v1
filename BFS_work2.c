@@ -160,27 +160,45 @@ void statisticCreate(int rows, int cols, int *biasMatrix){ // bias matrisi kayde
 			}
 		}
 	}
+	//------------------------------------------------------------------------------------------
 	//	.BIN		istatistigin yuzdesel degerlerini binary olarak yazdirmak icin
+    int header[3] = {1, rows, cols};// 0 bos
 	FILE *binFile = fopen(OUTPUTFILENAME, "rb+");
     if (!binFile) {
         binFile = fopen(OUTPUTFILENAME, "wb+");
         if (!binFile) {return;}
-
-        int header[3] = {0, rows, cols};// 0 bos
+		
+		printf("rows: %d\nCols: %d\n", rows,cols);
         if(fwrite(header, sizeof(int), 3, binFile) != 3){
 			fclose(binFile);
 			return;
 		}
         fflush(binFile);
     }
-    if(fwrite(biasMatrix, sizeof(int), 4 * rows * cols, binFile) != (size_t)(4 * rows * cols)){
-        fclose(binFile);
-        return;
-    }
+    
+    for(i= 0; i<rows; i++){
+		for(j= 0; j<cols; j++){
+			for(k=0; k<4; k++){
+				//printf(" %d ",biasMatrix[INDEX(i,j,k,rows,cols)]);
+				if(fwrite(&biasMatrix[INDEX(i,j,k,rows,cols)], sizeof(int), 1, binFile) != 1){
+
+					fclose(binFile);
+        			return;
+				}
+			}
+		}
+	}
+	printf("\nRows: %d\nCols: %d\n", header[1], header[2]);
+    
+//    if(fwrite(biasMatrix, sizeof(int), 4 * rows * cols, binFile) != (size_t)(4 * rows * cols)){
+//        fclose(binFile);
+//        return;
+//    }
     fclose(binFile);
-		
-	/*//	.TEXT		istatistigin sayisal degerlerini text olarak yazdirmak icin
-	FILE *textFile = fopen("directionData2.txt", "w");
+    
+	//-------------------------------------------------------------------------------------------	
+	//	.TEXT		istatistigin sayisal degerlerini text olarak yazdirmak icin
+	/*FILE *textFile = fopen("directionData2.txt", "w");
 	if(textFile == NULL) return;
 	
 	fprintf(textFile, "Yukari\tAsagi\tSol\tSag\n");
